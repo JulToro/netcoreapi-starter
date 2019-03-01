@@ -1,120 +1,119 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Mvc;
+using netcore.api.Factories;
+using netcore.api.Models;
+using netcore.infrastructure.Entities;
+using netcore.infrastructure.Interfaces;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using netcore.infrastructure;
-using netcore.infrastructure.Entities;
 
 namespace netcore.api.Controllers
 {
+    [Produces("application/json+hateoas")]
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly SampleDbContext _context;
-
-        public UsersController(SampleDbContext context)
+        public IUserRepository Repository { get; set; }
+        public UsersController(IUserRepository userRepository)
         {
-            _context = context;
+            Repository = userRepository;
         }
-
-        // GET: api/Users
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUser()
+        /// <summary>
+        /// Obtiene todas las usuarios creados
+        /// </summary>
+        /// <returns>Retorna una lista de usuarios</returns>
+        [HttpGet(Name = "get-users")]
+        [ProducesResponseType(200, Type = typeof(RootDto<UserDto>))]
+        public async Task<IActionResult> Get()
         {
-            return await _context.User.ToListAsync();
+            var users = await Repository.GetAll();
+            var items = users.Select(x => x.ToUserDto()).ToList();
+            return Ok(items);
         }
-
-        // GET: api/Users/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(Guid id)
+        /// <summary>
+        /// Obtiene un usuario solicitado
+        /// </summary>
+        /// <param name="id">Identificador del usuario</param>
+        /// <returns>Retorna el objeto completo de la usuario solicitado</returns>
+        /// <response code="404">Retorna NotFound cuando no existe un usuario con el identificador enviado</response>          
+        [HttpGet("{id}", Name = "get-user")]
+        [ProducesResponseType(200, Type = typeof(ItemDto<UserDto>))]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Get(Guid id)
         {
-            var user = await _context.User.FindAsync(id);
-
-            if (user == null)
+            var user = await Repository.GetById(id);
+            UserDto item = user.ToUserDto();
+            if (item == null)
             {
                 return NotFound();
             }
-
-            return user;
+            return Ok(item);
         }
-
-        // PUT: api/Users/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUser(Guid id, User user)
+        /// <summary>
+        /// Actualiza un usuario creado anteriormente
+        /// </summary>
+        /// <param name="id">Identificador del usuario</param>
+        /// <param name="user"></param>
+        /// <returns>Retorna un objeto actualizado del usuario</returns>
+        /// <response code="404">Retorna NotFound cuando no existe un usuario con el identificador enviado</response>          
+        /// <response code="400">Retorna BadRequest cuando la entidad enviada es inválida</response>          
+        [HttpPut("{id}", Name = "update-user")]
+        [ProducesResponseType(typeof(ItemDto<UserDto>), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> Put(Guid id, User user)
         {
-            if (id != user.Id)
+            if (!ModelState.IsValid)
             {
-                return BadRequest();
+                return BadRequest(ModelState);
             }
-
-            _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // POST: api/Users
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
-        {
-            _context.User.Add(user);
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (UserExists(user.Id))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
-        }
-
-        // DELETE: api/Users/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<User>> DeleteUser(Guid id)
-        {
-            var user = await _context.User.FindAsync(id);
-            if (user == null)
+            var item = await Repository.GetById(id);
+            if (item == null)
             {
                 return NotFound();
             }
-
-            _context.User.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return user;
+            user.Id = id;
+            UserDto updatedItem = (await Repository.Update(user.ToUser())).ToUserDto();
+            return CreatedAtAction("Get", new { id = updatedItem.Id }, updatedItem);
         }
-
-        private bool UserExists(Guid id)
+        /// <summary>
+        /// Crea un usuario nuevo
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns>Objeto nuevo del usuario creado</returns>
+        /// <response code="200">Retorna el nuevo objeto de usuario creado</response> 
+        /// <response code="400">Retorna BadRequest cuando la entidad enviada es inválida</response>          
+        [ProducesResponseType(200, Type = typeof(ItemDto<UserDto>))]
+        [ProducesResponseType(400)]
+        [HttpPost(Name = "create-user")]
+        public async Task<IActionResult> Post(UserDto user)
         {
-            return _context.User.Any(e => e.Id == id);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            user.Id = Guid.NewGuid();
+            UserDto item = (await Repository.Add(user.ToUser())).ToUserDto();
+            return CreatedAtAction("Get", new { id = item.Id }, item);
+        }
+        /// <summary>
+        /// Elimina un usuario específico
+        /// </summary>
+        /// <param name="id">Identificador del usuario</param>
+        /// <response code="404">Retorna NotFound cuando no existe un usuario con el identificador enviado</response>          
+        [HttpDelete("{id}", Name = "delete-user")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var item = await Repository.GetById(id);
+            if (item == null)
+            {
+                return NotFound();
+            }
+            await Repository.Remove(id);
+            return Ok();
         }
     }
 }

@@ -4,9 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using netcore.api.Models;
 using netcore.infrastructure;
+using netcore.infrastructure.Interfaces;
+using netcore.infrastructure.Repositories;
 using Swashbuckle.AspNetCore.Swagger;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
@@ -24,7 +28,15 @@ namespace netcore.api
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
+                .AddHateoas(options =>
+            {
+                options
+                   .AddLink<UserDto>("get-user", p => new { id = p.Id })
+                   .AddLink<List<UserDto>>("create-user")
+                   .AddLink<UserDto>("update-user", p => new { id = p.Id })
+                   .AddLink<UserDto>("delete-user", p => new { id = p.Id });
+            });
             #region Entity framework core 
             var connection = Configuration.GetConnectionString("SqlDb");
             services.AddDbContext<SampleDbContext>(options =>
@@ -61,6 +73,9 @@ namespace netcore.api
                            c.IncludeXmlComments(xmlPath);
                        });
             #endregion
+
+            services.AddScoped<IUserRepository, UserRepository>();
+
             services.AddCors();
         }
 

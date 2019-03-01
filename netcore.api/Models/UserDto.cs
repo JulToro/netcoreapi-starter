@@ -1,18 +1,15 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
-namespace netcore.infrastructure.Entities
+namespace netcore.api.Models
 {
-    public class User
+    public class UserDto
     {
-        public User()
+        public UserDto()
         {
 
         }
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.None)]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
         [Required]
         [MaxLength(100)]
         public string Name { get; set; }
