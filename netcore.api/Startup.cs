@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using netcore.infrastructure;
 using Swashbuckle.AspNetCore.Swagger;
 using System;
 using System.IO;
@@ -23,58 +25,80 @@ namespace netcore.api
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-
+            #region Entity framework core 
+            var connection = Configuration.GetConnectionString("SqlDb");
+            services.AddDbContext<SampleDbContext>(options =>
+               options
+                   //.UseLazyLoadingProxies()
+                   .UseSqlServer(connection,
+                   sqlServerOptionsAction: sqlOptions =>
+                   {
+                       sqlOptions.MigrationsAssembly("netcore.api");
+                       sqlOptions.EnableRetryOnFailure(
+                       maxRetryCount: 5,
+                       maxRetryDelay: TimeSpan.FromSeconds(10),
+                       errorNumbersToAdd: null);
+                   }).EnableSensitiveDataLogging());
+            #endregion
+            #region Swagger
             services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new Info
-                {
-                    Version = "v1",
-                    Title = "NetCore API",
-                    Description = "A simple example ASP.NET Core Web API",
-                    TermsOfService = "None",
-                    Contact = new Contact
-                    {
-                        Name = "Shayne Boyer",
-                        Email = string.Empty,
-                        Url = "https://twitter.com/spboyer"
-                    },
-                    License = new License
-                    {
-                        Name = "Use under LICX",
-                        Url = "https://example.com/license"
-                    }
-                });
-                // Set the comments path for the Swagger JSON and UI.
-                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                c.IncludeXmlComments(xmlPath);
-            });
+                       {
+                           c.SwaggerDoc("v1", new Info
+                           {
+                               Version = "v1",
+                               Title = "NetCore API",
+                               Description = "Base project with Net Core 2.2",
+                               TermsOfService = "None",
+                               Contact = new Contact
+                               {
+                                   Name = "Andrés Londoño",
+                                   Email = "andreslon@outlook.com",
+                                   Url = "http://www.andreslon.com/"
+                               }
+                           });
+                           var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                           var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+                           c.IncludeXmlComments(xmlPath);
+                       });
+            #endregion
+            services.AddCors();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            #region CORS
+            app.UseCors(builder =>
+            {
+                builder.AllowAnyOrigin();
+                builder.AllowAnyHeader();
+                builder.AllowAnyMethod();
+                builder.AllowCredentials();
+            });
+            #endregion
+            #region Entity framework core 
+            using (var serviceScope = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>().CreateScope())
+            {
+                var context = serviceScope.ServiceProvider.GetService<SampleDbContext>();
+                context.Database.EnsureCreated();
+            }
+            #endregion
+            #region Swagger
             app.UseSwagger();
-
-            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.), 
-            // specifying the Swagger JSON endpoint.
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "NetCore API");
                 c.RoutePrefix = string.Empty;
             });
-
+            #endregion
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
             else
             {
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-
             app.UseHttpsRedirection();
             app.UseMvc();
         }

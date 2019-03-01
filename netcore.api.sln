@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "netcore.api", "netcore.api\netcore.api.csproj", "{2BF58322-86FE-474B-9692-0BF26433223E}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "netcore.infrastructure", "netcore.infrastructure\netcore.infrastructure.csproj", "{75928782-4088-41CF-82C9-6AD826B8AF22}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{2BF58322-86FE-474B-9692-0BF26433223E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BF58322-86FE-474B-9692-0BF26433223E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BF58322-86FE-474B-9692-0BF26433223E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75928782-4088-41CF-82C9-6AD826B8AF22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75928782-4088-41CF-82C9-6AD826B8AF22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75928782-4088-41CF-82C9-6AD826B8AF22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75928782-4088-41CF-82C9-6AD826B8AF22}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
